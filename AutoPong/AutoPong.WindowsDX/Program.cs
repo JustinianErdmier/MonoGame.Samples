@@ -1,5 +1,4 @@
-﻿
-using AutoPong;
+﻿using AutoPong.Core;
 
-using var game = new AutoPongGame();
+using AutoPongGame game = new();
 game.Run();

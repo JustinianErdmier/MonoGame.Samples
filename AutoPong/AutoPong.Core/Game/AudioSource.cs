@@ -1,70 +1,60 @@
-﻿using Microsoft.Xna.Framework.Audio;
-using System;
+﻿using System;
 
-namespace AutoPong
+using Microsoft.Xna.Framework.Audio;
+
+namespace AutoPong.Core.Game;
+
+public class AudioSource
 {
-    public class AudioSource
+    private const int SampleRate = 48000;
+
+    private static readonly Random Rand = new();
+
+    private readonly DynamicSoundEffectInstance _dynamicSoundEffectInstance;
+
+    private byte[] _buffer;
+
+    private int _bufferSize;
+
+    private int _totalTime;
+
+    public AudioSource()
     {
-        private int SampleRate = 48000;
-        private DynamicSoundEffectInstance DSEI;
-        private byte[] Buffer;
-        private int BufferSize;
-        private int TotalTime = 0;
-        static Random Rand = new Random();
+        _dynamicSoundEffectInstance          = new DynamicSoundEffectInstance(SampleRate, AudioChannels.Mono);
+        _bufferSize                          = _dynamicSoundEffectInstance.GetSampleSizeInBytes(TimeSpan.FromMilliseconds(value: 500));
+        _buffer                              = new byte[_bufferSize];
+        _dynamicSoundEffectInstance.Volume   = 0.4f;
+        _dynamicSoundEffectInstance.IsLooped = false;
+    }
 
-        public AudioSource()
+    public void PlayWave(double frequency, short duration, WaveType waveType, float volume)
+    {
+        _dynamicSoundEffectInstance.Stop();
+
+        _bufferSize = _dynamicSoundEffectInstance.GetSampleSizeInBytes(TimeSpan.FromMilliseconds(duration));
+        _buffer     = new byte[_bufferSize];
+
+        int size = _bufferSize - 1;
+
+        for (int index = 0; index < size; index += 2)
         {
-            DSEI = new DynamicSoundEffectInstance(SampleRate, AudioChannels.Mono);
-            BufferSize = DSEI.GetSampleSizeInBytes(TimeSpan.FromMilliseconds(500));
-            Buffer = new byte[BufferSize];
-            DSEI.Volume = 0.4f;
-            DSEI.IsLooped = false;
-        }
+            double time = _totalTime / (double)SampleRate;
 
-        public void PlayWave(double freq, short durMS, WaveType Wt, float Volume)
-        {
-            DSEI.Stop();
-
-            BufferSize = DSEI.GetSampleSizeInBytes(TimeSpan.FromMilliseconds(durMS));
-            Buffer = new byte[BufferSize];
-
-            int size = BufferSize - 1;
-            for (int i = 0; i < size; i += 2)
+            short currentSample = waveType switch
             {
-                double time = (double)TotalTime / (double)SampleRate;
+                WaveType.Sin    => (short)(Math.Sin(2 * Math.PI * frequency * time)            * short.MaxValue         * volume),
+                WaveType.Tan    => (short)(Math.Tan(2 * Math.PI * frequency * time)            * short.MaxValue         * volume),
+                WaveType.Square => (short)(Math.Sign(Math.Sin(2 * Math.PI * frequency * time)) * (double)short.MaxValue * volume),
+                WaveType.Noise  => (short)(Rand.Next(-short.MaxValue, short.MaxValue)          * volume),
+                var _           => 0
+            };
 
-                short currentSample = 0;
-                switch (Wt)
-                {
-                    case WaveType.Sin:
-                        {
-                            currentSample = (short)(Math.Sin(2 * Math.PI * freq * time) * (double)short.MaxValue * Volume);
-                            break;
-                        }
-                    case WaveType.Tan:
-                        {
-                            currentSample = (short)(Math.Tan(2 * Math.PI * freq * time) * (double)short.MaxValue * Volume);
-                            break;
-                        }
-                    case WaveType.Square:
-                        {
-                            currentSample = (short)(Math.Sign(Math.Sin(2 * Math.PI * freq * time)) * (double)short.MaxValue * Volume);
-                            break;
-                        }
-                    case WaveType.Noise:
-                        {
-                            currentSample = (short)(Rand.Next(-short.MaxValue, short.MaxValue) * Volume);
-                            break;
-                        }
-                }
-
-                Buffer[i] = (byte)(currentSample & 0xFF);
-                Buffer[i + 1] = (byte)(currentSample >> 8);
-                TotalTime += 2;
-            }
-
-            DSEI.SubmitBuffer(Buffer);
-            DSEI.Play();
+            _buffer[index]     =  (byte)(currentSample & 0xFF);
+            _buffer[index + 1] =  (byte)(currentSample >> 8);
+            _totalTime         += 2;
         }
+
+        _dynamicSoundEffectInstance.SubmitBuffer(_buffer);
+        _dynamicSoundEffectInstance.Play();
     }
 }

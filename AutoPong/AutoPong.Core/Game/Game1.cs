@@ -1,34 +1,41 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using myStartkit.Core.Inputs;
 
-namespace AutoPong;
+namespace AutoPong.Core.Game;
 
-public class Game1 : Game
+public class Game1 : Microsoft.Xna.Framework.Game
 {
-    private GraphicsDeviceManager _graphics;
+    private const int PlayerIndex = (int)Microsoft.Xna.Framework.PlayerIndex.One;
+
+    private const int PositionSpacing = 40;
+
+    private const int TextStartPosition = 20;
+
+    private readonly InputState _inputState = new();
+
+    private readonly Color _textDrawColour = Color.White;
+
+    private SpriteFont _hudFont;
+
     private SpriteBatch _spriteBatch;
-    private readonly InputState inputState = new InputState();
-    private SpriteFont hudFont;
-    private int playerIndex = (int)PlayerIndex.One;
-    private Color textDrawColour = Color.White;
-    private int textStartPosition = 20;
-    private int positionSpacing = 40;
 
     public Game1()
     {
-        _graphics = new GraphicsDeviceManager(this);
-        Content.RootDirectory = "Content";
+        GraphicsDeviceManager graphics = new(this);
+
+        Content.RootDirectory              = "Content";
+        graphics.IsFullScreen              = true;
+        graphics.PreferredBackBufferWidth  = 2560;
+        graphics.PreferredBackBufferHeight = 1440;
+
         IsMouseVisible = true;
-        _graphics.IsFullScreen = true;
-        _graphics.PreferredBackBufferWidth = 2560;
-        _graphics.PreferredBackBufferHeight = 1440;
     }
 
+    // ReSharper disable once RedundantOverriddenMember
     protected override void Initialize()
     {
-        // TODO: Add your initialization logic here
+        // TODO: Add your initialization logic here.
 
         base.Initialize();
     }
@@ -37,13 +44,13 @@ public class Game1 : Game
     {
         _spriteBatch = new SpriteBatch(GraphicsDevice);
 
-        // TODO: use this.Content to load your game content here
-        hudFont = Content.Load<SpriteFont>("Fonts/Hud");
+        // TODO: Use `this.Content` to load your game content here.
+        _hudFont = Content.Load<SpriteFont>(assetName: "Fonts/Hud");
     }
 
     protected override void Update(GameTime gameTime)
     {
-        inputState.Update(gameTime, GraphicsDevice.Viewport);
+        _inputState.Update(gameTime, GraphicsDevice.Viewport);
 
         base.Update(gameTime);
     }
@@ -52,75 +59,73 @@ public class Game1 : Game
     {
         GraphicsDevice.Clear(Color.CornflowerBlue);
 
-        string state = inputState.CurrentGamePadStates[playerIndex].IsConnected ? "Connected" : "Disconnected";
+        string state = _inputState.CurrentGamePadStates[PlayerIndex].IsConnected ? "Connected" : "Disconnected";
 
         string connectedValue = $"GamePad: {state}";
-        string AbuttonValue = $"A Button: {inputState.CurrentGamePadStates[playerIndex].IsButtonDown(Buttons.A)}";
-        string BbuttonValue = $"B Button: {inputState.CurrentGamePadStates[playerIndex].IsButtonDown(Buttons.B)}";
-        string XbuttonValue = $"X Button: {inputState.CurrentGamePadStates[playerIndex].IsButtonDown(Buttons.X)}";
-        string YbuttonValue = $"Y Button: {inputState.CurrentGamePadStates[playerIndex].IsButtonDown(Buttons.Y)}";
+        string aButtonValue   = $"A Button: {_inputState.CurrentGamePadStates[PlayerIndex].IsButtonDown(Buttons.A)}";
+        string bButtonValue   = $"B Button: {_inputState.CurrentGamePadStates[PlayerIndex].IsButtonDown(Buttons.B)}";
+        string xButtonValue   = $"X Button: {_inputState.CurrentGamePadStates[PlayerIndex].IsButtonDown(Buttons.X)}";
+        string yButtonValue   = $"Y Button: {_inputState.CurrentGamePadStates[PlayerIndex].IsButtonDown(Buttons.Y)}";
 
-        string StartbuttonValue = $"Start Button: {inputState.CurrentGamePadStates[playerIndex].IsButtonDown(Buttons.Start)}";
-        string BackbuttonValue = $"Back Button: {inputState.CurrentGamePadStates[playerIndex].IsButtonDown(Buttons.Back)}";
-        string BigbuttonValue = $"Big Button: {inputState.CurrentGamePadStates[playerIndex].IsButtonDown(Buttons.BigButton)}";
+        string startButtonValue = $"Start Button: {_inputState.CurrentGamePadStates[PlayerIndex].IsButtonDown(Buttons.Start)}";
+        string backButtonValue  = $"Back Button: {_inputState.CurrentGamePadStates[PlayerIndex].IsButtonDown(Buttons.Back)}";
+        string bigButtonValue   = $"Big Button: {_inputState.CurrentGamePadStates[PlayerIndex].IsButtonDown(Buttons.BigButton)}";
 
-        string DPadLbuttonValue = $"DPadL Button: {inputState.CurrentGamePadStates[playerIndex].IsButtonDown(Buttons.DPadLeft)}";
-        string DPadRbuttonValue = $"DPadR Button: {inputState.CurrentGamePadStates[playerIndex].IsButtonDown(Buttons.DPadRight)}";
-        string DPadUbuttonValue = $"DPadU Button: {inputState.CurrentGamePadStates[playerIndex].IsButtonDown(Buttons.DPadUp)}";
-        string DPadDbuttonValue = $"DPadD Button: {inputState.CurrentGamePadStates[playerIndex].IsButtonDown(Buttons.DPadDown)}";
+        string dPadLButtonValue = $"DPadL Button: {_inputState.CurrentGamePadStates[PlayerIndex].IsButtonDown(Buttons.DPadLeft)}";
+        string dPadRButtonValue = $"DPadR Button: {_inputState.CurrentGamePadStates[PlayerIndex].IsButtonDown(Buttons.DPadRight)}";
+        string dPadUButtonValue = $"DPadU Button: {_inputState.CurrentGamePadStates[PlayerIndex].IsButtonDown(Buttons.DPadUp)}";
+        string dPadDButtonValue = $"DPadD Button: {_inputState.CurrentGamePadStates[PlayerIndex].IsButtonDown(Buttons.DPadDown)}";
 
-        string RBumperbuttonValue = $"RBumper Button: {inputState.CurrentGamePadStates[playerIndex].IsButtonDown(Buttons.RightShoulder)}";
-        string RThumbstickbuttonValue = $"RThumbstick Button: {inputState.CurrentGamePadStates[playerIndex].IsButtonDown(Buttons.RightThumbstickDown)}";
-        string RThumbstickStateValue = $"RThumbstick State: {inputState.CurrentGamePadStates[playerIndex].ThumbSticks.Right}";
-        string RTriggerValue = $"RTrigger Button: {inputState.CurrentGamePadStates[playerIndex].IsButtonDown(Buttons.RightTrigger)}";
-        string RTriggerStateValue = $"RTrigger State: {inputState.CurrentGamePadStates[playerIndex].Triggers.Right}";
+        string rBumperButtonValue     = $"RBumper Button: {_inputState.CurrentGamePadStates[PlayerIndex].IsButtonDown(Buttons.RightShoulder)}";
+        string rThumbstickButtonValue = $"RThumbstick Button: {_inputState.CurrentGamePadStates[PlayerIndex].IsButtonDown(Buttons.RightThumbstickDown)}";
+        string rThumbstickStateValue  = $"RThumbstick State: {_inputState.CurrentGamePadStates[PlayerIndex].ThumbSticks.Right}";
+        string rTriggerValue          = $"RTrigger Button: {_inputState.CurrentGamePadStates[PlayerIndex].IsButtonDown(Buttons.RightTrigger)}";
+        string rTriggerStateValue     = $"RTrigger State: {_inputState.CurrentGamePadStates[PlayerIndex].Triggers.Right}";
 
-        string LBumperbuttonValue = $"LBumper Button: {inputState.CurrentGamePadStates[playerIndex].IsButtonDown(Buttons.LeftShoulder)}";
-        string LThumbstickbuttonValue = $"LThumbstick Button: {inputState.CurrentGamePadStates[playerIndex].IsButtonDown(Buttons.LeftThumbstickDown)}";
-        string LThumbstickStateValue = $"LThumbstick State: {inputState.CurrentGamePadStates[playerIndex].ThumbSticks.Left}";
-        string LTriggerValue = $"LTrigger Button: {inputState.CurrentGamePadStates[playerIndex].IsButtonDown(Buttons.LeftTrigger)}";
-        string LTriggerStateValue = $"LTrigger State: {inputState.CurrentGamePadStates[playerIndex].Triggers.Left}";
+        string lBumperButtonValue     = $"LBumper Button: {_inputState.CurrentGamePadStates[PlayerIndex].IsButtonDown(Buttons.LeftShoulder)}";
+        string lThumbstickButtonValue = $"LThumbstick Button: {_inputState.CurrentGamePadStates[PlayerIndex].IsButtonDown(Buttons.LeftThumbstickDown)}";
+        string lThumbstickStateValue  = $"LThumbstick State: {_inputState.CurrentGamePadStates[PlayerIndex].ThumbSticks.Left}";
+        string lTriggerValue          = $"LTrigger Button: {_inputState.CurrentGamePadStates[PlayerIndex].IsButtonDown(Buttons.LeftTrigger)}";
+        string lTriggerStateValue     = $"LTrigger State: {_inputState.CurrentGamePadStates[PlayerIndex].Triggers.Left}";
+
         _spriteBatch.Begin();
-        // TODO: Add your drawing code here
-        _spriteBatch.DrawString(hudFont, connectedValue, new Vector2(20, textStartPosition), textDrawColour);
-        DrawInputValue(AbuttonValue, 1);
-        DrawInputValue(BbuttonValue, 2);
-        DrawInputValue(XbuttonValue, 3);
-        DrawInputValue(YbuttonValue, 4);
 
-        DrawInputValue(StartbuttonValue, 5);
-        DrawInputValue(BackbuttonValue, 6);
-        DrawInputValue(BigbuttonValue, 7);
+        // TODO: Add your drawing code here.
+        _spriteBatch.DrawString(_hudFont, connectedValue, new Vector2(x: 20, TextStartPosition), _textDrawColour);
 
-        DrawInputValue(DPadLbuttonValue, 8);
-        DrawInputValue(DPadRbuttonValue, 9);
-        DrawInputValue(DPadUbuttonValue, 10);
-        DrawInputValue(DPadDbuttonValue, 11);
+        DrawInputValue(aButtonValue, index: 1);
+        DrawInputValue(bButtonValue, index: 2);
+        DrawInputValue(xButtonValue, index: 3);
+        DrawInputValue(yButtonValue, index: 4);
 
-        DrawInputValue(LBumperbuttonValue, 12);
-        DrawInputValue(LThumbstickbuttonValue, 13);
-        DrawInputValue(LThumbstickStateValue, 14);
-        DrawInputValue(LTriggerValue, 15);
-        DrawInputValue(LTriggerStateValue, 16);
+        DrawInputValue(startButtonValue, index: 5);
+        DrawInputValue(backButtonValue, index: 6);
+        DrawInputValue(bigButtonValue, index: 7);
 
-        DrawInputValue(RBumperbuttonValue, 17);
-        DrawInputValue(RThumbstickbuttonValue, 18);
-        DrawInputValue(RThumbstickStateValue, 19);
-        DrawInputValue(RTriggerValue, 20);
-        DrawInputValue(RTriggerStateValue, 21);
+        DrawInputValue(dPadLButtonValue, index: 8);
+        DrawInputValue(dPadRButtonValue, index: 9);
+        DrawInputValue(dPadUButtonValue, index: 10);
+        DrawInputValue(dPadDButtonValue, index: 11);
+
+        DrawInputValue(lBumperButtonValue, index: 12);
+        DrawInputValue(lThumbstickButtonValue, index: 13);
+        DrawInputValue(lThumbstickStateValue, index: 14);
+        DrawInputValue(lTriggerValue, index: 15);
+        DrawInputValue(lTriggerStateValue, index: 16);
+
+        DrawInputValue(rBumperButtonValue, index: 17);
+        DrawInputValue(rThumbstickButtonValue, index: 18);
+        DrawInputValue(rThumbstickStateValue, index: 19);
+        DrawInputValue(rTriggerValue, index: 20);
+        DrawInputValue(rTriggerStateValue, index: 21);
 
         _spriteBatch.End();
 
         base.Draw(gameTime);
     }
 
-    private void DrawInputValue(string AbuttonValue, int index)
-    {
-        _spriteBatch.DrawString(hudFont, AbuttonValue, new Vector2(20, GetTextPositionForIndex(index)), textDrawColour);
-    }
+    private void DrawInputValue(string aButtonValue, int index)
+        => _spriteBatch.DrawString(_hudFont, aButtonValue, new Vector2(x: 20, GetTextPositionForIndex(index)), _textDrawColour);
 
-    private int GetTextPositionForIndex(int index)
-    {
-        return textStartPosition + positionSpacing * index;
-    }
+    private static int GetTextPositionForIndex(int index) => TextStartPosition + PositionSpacing * index;
 }

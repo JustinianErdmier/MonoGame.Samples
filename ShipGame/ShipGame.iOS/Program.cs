@@ -1,4 +1,7 @@
 ﻿using Foundation;
+
+using ShipGame.Core;
+
 using UIKit;
 
 namespace ShipGame.iOS

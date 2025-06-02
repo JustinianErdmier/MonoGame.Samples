@@ -1,10 +1,3 @@
-﻿namespace AutoPong
-{
-    public enum WaveType 
-    { 
-        Sin,
-        Tan,
-        Square,
-        Noise
-    }
-}
+﻿namespace AutoPong.Core.Game;
+
+public enum WaveType { Sin, Tan, Square, Noise }

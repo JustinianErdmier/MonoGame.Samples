@@ -2,33 +2,34 @@ using Android.App;
 using Android.Content.PM;
 using Android.OS;
 using Android.Views;
+
+using AutoPong.Core;
+
 using Microsoft.Xna.Framework;
 
-namespace AutoPong.Android
+namespace AutoPong.Android;
+
+[ Activity(Label = "@string/app_name",
+           MainLauncher = true,
+           Icon = "@drawable/icon",
+           AlwaysRetainTaskState = true,
+           LaunchMode = LaunchMode.SingleInstance,
+           ScreenOrientation = ScreenOrientation.Landscape,
+           ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.Keyboard | ConfigChanges.KeyboardHidden | ConfigChanges.ScreenSize) ]
+public class Activity1 : AndroidGameActivity
 {
-    [Activity(
-        Label = "@string/app_name",
-        MainLauncher = true,
-        Icon = "@drawable/icon",
-        AlwaysRetainTaskState = true,
-        LaunchMode = LaunchMode.SingleInstance,
-        ScreenOrientation = ScreenOrientation.Landscape,
-        ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.Keyboard | ConfigChanges.KeyboardHidden | ConfigChanges.ScreenSize
-    )]
-    public class Activity1 : AndroidGameActivity
+    private AutoPongGame _game;
+
+    private View _view;
+
+    protected override void OnCreate(Bundle bundle)
     {
-        private AutoPongGame _game;
-        private View _view;
+        base.OnCreate(bundle);
 
-        protected override void OnCreate(Bundle bundle)
-        {
-            base.OnCreate(bundle);
+        _game = new AutoPongGame();
+        _view = _game.Services.GetService(typeof(View)) as View;
 
-            _game = new AutoPongGame();
-            _view = _game.Services.GetService(typeof(View)) as View;
-
-            SetContentView(_view);
-            _game.Run();
-        }
+        SetContentView(_view);
+        _game.Run();
     }
 }

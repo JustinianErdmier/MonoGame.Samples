@@ -1,6 +1,7 @@
-﻿
-using ShipGame;
+﻿using ShipGame.Core;
 
-using var game = new ShipGameGame();
+using ShipGameGame game = new();
+
 ShipGameGame.SetInstance(game);
+
 game.Run();

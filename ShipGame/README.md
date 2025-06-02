@@ -1,6 +1,6 @@
 # Ship Game Starter Kit
 
-![ShipGame 3D Sample](../Images/ShipGame.png)
+![ShipGame 3D Sample](./ShipGame.Core/ShipGame.ico)
 
 This topic contains the following sections:
 

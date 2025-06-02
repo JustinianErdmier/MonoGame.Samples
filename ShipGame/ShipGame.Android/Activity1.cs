@@ -4,6 +4,8 @@ using Android.OS;
 using Android.Views;
 using Microsoft.Xna.Framework;
 
+using ShipGame.Core;
+
 namespace ShipGame
 {
     [Activity(

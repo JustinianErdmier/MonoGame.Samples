@@ -1,85 +1,81 @@
-#region File Description
-//-----------------------------------------------------------------------------
-// ProjectileManager.cs
-//
-// Microsoft XNA Community Game Platform
-// Copyright (C) Microsoft Corporation. All rights reserved.
-//-----------------------------------------------------------------------------
-#endregion
-
 #region Using Statements
+
+using System.Collections.Generic;
+
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;using System.Collections.Generic;
+using Microsoft.Xna.Framework.Graphics;
+
 #endregion
 
-namespace ShipGame
+namespace ShipGame.Core.Game.Graphics;
+
+public class ProjectileManager
 {
-    public class ProjectileManager
+    // linked list of nodes to delete from the projectiles list
+    private readonly List<LinkedListNode<Projectile>> deleteProjectiles;
+
+    private readonly GameManager game; // game manager
+
+    // linked list of active projectiles
+    private readonly LinkedList<Projectile> projectiles;
+
+    /// <summary>Create a new projetcile manager</summary>
+    public ProjectileManager(GameManager game)
     {
-        GameManager game;        // game manager
+        this.game = game;
 
-        // linked list of active projectiles
-        LinkedList<Projectile> projectiles;
+        projectiles       = new LinkedList<Projectile>();
+        deleteProjectiles = new List<LinkedListNode<Projectile>>();
+    }
 
-        // linked list of nodes to delete from the projectiles list
-        List<LinkedListNode<Projectile>> deleteProjectiles;
+    /// <summary>Add a new projectile</summary>
+    public void Add(Projectile p)
+    {
+        projectiles.AddLast(p);
+    }
 
-        /// <summary>
-        /// Create a new projetcile manager
-        /// </summary>
-        public ProjectileManager(GameManager game)
+    /// <summary>Update all projectiles</summary>
+    public void Update(float elapsedTime)
+    {
+        // empty deleted projectiles list
+        deleteProjectiles.Clear();
+
+        // for each powerup
+        LinkedListNode<Projectile> Node = projectiles.First;
+
+        while (Node != null)
         {
-            this.game = game;
+            // update projectile
+            bool running = Node.Value.Update(elapsedTime, game);
 
-            projectiles = new LinkedList<Projectile>();
-            deleteProjectiles = new List<LinkedListNode<Projectile>>();
-        }
-
-        /// <summary>
-        /// Add a new projectile
-        /// </summary>
-        public void Add(Projectile p)
-        {
-            projectiles.AddLast(p);
-        }
-
-        /// <summary>
-        /// Update all projectiles
-        /// </summary>
-        public void Update(float elapsedTime)
-        {
-            // empty deleted projectiles list
-            deleteProjectiles.Clear();
-
-            // for each powerup
-            LinkedListNode<Projectile> Node = projectiles.First;
-            while (Node != null)
+            // if finished running add to delete list
+            if (running == false)
             {
-                // update projectile
-                bool running = Node.Value.Update(elapsedTime, game);
-
-                // if finished running add to delete list
-                if (running == false)
-                    deleteProjectiles.Add(Node);
-
-                // move to next node
-                Node = Node.Next;
+                deleteProjectiles.Add(Node);
             }
 
-            // delete all nodes in delete list
-            foreach (LinkedListNode<Projectile> p in deleteProjectiles)
-                projectiles.Remove(p);
+            // move to next node
+            Node = Node.Next;
         }
 
-        /// <summary>
-        /// Draw all projectiles
-        /// </summary>
-        public void Draw(GraphicsDevice gd, RenderTechnique technique,
-            Vector3 cameraPosition, Matrix viewProjection, LightList lights)
+        // delete all nodes in delete list
+        foreach (LinkedListNode<Projectile> p in deleteProjectiles)
         {
-            // draw all projectiles
-            foreach (Projectile p in projectiles)
-                p.Draw(game, gd, technique, cameraPosition, viewProjection, lights);
+            projectiles.Remove(p);
+        }
+    }
+
+    /// <summary>Draw all projectiles</summary>
+    public void Draw(GraphicsDevice  gd,
+                     RenderTechnique technique,
+                     Vector3         cameraPosition,
+                     Matrix          viewProjection,
+                     LightList       lights)
+    {
+        // draw all projectiles
+        foreach (Projectile p in projectiles)
+        {
+            p.Draw(game, gd, technique, cameraPosition, viewProjection, lights);
         }
     }
 }

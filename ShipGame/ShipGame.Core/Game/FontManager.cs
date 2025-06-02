@@ -1,202 +1,185 @@
-#region File Description
-//-----------------------------------------------------------------------------
-// FontManager.cs
-//
-// Microsoft XNA Community Game Platform
-// Copyright (C) Microsoft Corporation. All rights reserved.
-//-----------------------------------------------------------------------------
-#endregion
-
 #region Using Statements
+
+using System;
+using System.Collections.Generic;
+
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
-using System;
-using System.Collections.Generic;
+
 #endregion
 
-namespace ShipGame
+namespace ShipGame.Core.Game;
+
+// supported font types and sizes
+public enum FontType { SmallFont = 0, MediumFont, LargeFont }
+
+public class FontManager : IDisposable
 {
-    // supported font types and sizes
-    public enum FontType
+    private readonly List<SpriteFont> fonts; // list of sprite fonts
+
+    private readonly GraphicsDevice graphics; // graphics device
+
+    private SpriteBatch sprite; // sprite bacth
+
+    private bool textMode; // in text mode?
+
+    /// <summary>Create a new font manager</summary>
+    public FontManager(GraphicsDevice gd)
     {
-        SmallFont = 0,
-        MediumFont,
-        LargeFont
-    };
+        if (gd == null)
+        {
+            throw new ArgumentNullException(paramName: "gd");
+        }
 
-    public class FontManager : IDisposable
+        graphics = gd;
+        sprite   = new SpriteBatch(gd);
+        fonts    = new List<SpriteFont>();
+        textMode = false;
+    }
+
+    /// <summary>Get the current screen rectangle</summary>
+    public Rectangle ScreenRectangle
+        => new(graphics.Viewport.X,
+               graphics.Viewport.Y,
+               graphics.Viewport.Width,
+               graphics.Viewport.Height);
+
+    /// <summary>Load resources</summary>
+    public void LoadContent(ContentManager content)
     {
-        GraphicsDevice graphics;    // graphics device
-        SpriteBatch sprite;         // sprite bacth
-        List<SpriteFont> fonts;     // list of sprite fonts
-        bool textMode;              // in text mode?
+        fonts.Add(content.Load<SpriteFont>(assetName: "fonts/SmallFont"));
+        fonts.Add(content.Load<SpriteFont>(assetName: "fonts/MediumFont"));
+        fonts.Add(content.Load<SpriteFont>(assetName: "fonts/LargeFont"));
+    }
 
-        /// <summary>
-        /// Create a new font manager
-        /// </summary>
-        public FontManager(GraphicsDevice gd)
+    /// <summary>Free resources</summary>
+    public void UnloadContent()
+    {
+        fonts.Clear();
+    }
+
+    /// <summary>Enter text mode</summary>
+    public void BeginText()
+    {
+        sprite.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend);
+        textMode = true;
+    }
+
+    /// <summary>Drawn text using given font, position and color</summary>
+    public void DrawText(FontType font, string text, Vector2 position, Color color)
+    {
+        if (textMode)
         {
-            if (gd == null)
-            {
-                throw new ArgumentNullException("gd");
-            }
+            sprite.DrawString(fonts[(int)font], text, position, color);
+        }
+    }
 
-            graphics = gd;
-            sprite = new SpriteBatch(gd);
-            fonts = new List<SpriteFont>();
-            textMode = false;
+    /// <summary>End text mode</summary>
+    public void EndText()
+    {
+        sprite.End();
+        textMode = false;
+    }
+
+    /// <summary>Draw a texture in screen</summary>
+    public void DrawTexture(Texture2D  texture,
+                            Rectangle  rect,
+                            Color      color,
+                            BlendState blend)
+    {
+        if (textMode)
+        {
+            sprite.End();
         }
 
-        /// <summary>
-        /// Load resources
-        /// </summary>
-        public void LoadContent(ContentManager content)
-        {
-            fonts.Add(content.Load<SpriteFont>("fonts/SmallFont"));
-            fonts.Add(content.Load<SpriteFont>("fonts/MediumFont"));
-            fonts.Add(content.Load<SpriteFont>("fonts/LargeFont"));
-        }
+        sprite.Begin(SpriteSortMode.Immediate, blend);
+        sprite.Draw(texture, rect, color);
+        sprite.End();
 
-        /// <summary>
-        /// Free resources
-        /// </summary>
-        public void UnloadContent()
-        {
-            fonts.Clear();
-        }
-
-        /// <summary>
-        /// Get the current screen rectangle
-        /// </summary>
-        public Rectangle ScreenRectangle
-        {
-            get
-            {
-                return new Rectangle(graphics.Viewport.X, graphics.Viewport.Y,
-                    graphics.Viewport.Width, graphics.Viewport.Height);
-            }
-        }
-
-        /// <summary>
-        /// Enter text mode
-        /// </summary>
-        public void BeginText()
+        if (textMode)
         {
             sprite.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend);
-            textMode = true;
         }
+    }
 
-        /// <summary>
-        /// Drawn text using given font, position and color
-        /// </summary>
-        public void DrawText(FontType font, String text, Vector2 position, Color color)
-        {
-            if (textMode)
-                sprite.DrawString(fonts[(int)font], text, position, color);
-        }
-
-        /// <summary>
-        /// End text mode
-        /// </summary>
-        public void EndText()
+    /// <summary>Draw a texture with rotation</summary>
+    public void DrawTexture(Texture2D  texture,
+                            Rectangle  rect,
+                            float      rotation,
+                            Color      color,
+                            BlendState blend)
+    {
+        if (textMode)
         {
             sprite.End();
-            textMode = false;
         }
 
-        /// <summary>
-        /// Draw a texture in screen
-        /// </summary>
-        public void DrawTexture(
-            Texture2D texture,
-            Rectangle rect,
-            Color color,
-            BlendState blend)
-        {
-            if (textMode)
-                sprite.End();
+        rect.X += rect.Width  / 2;
+        rect.Y += rect.Height / 2;
 
-            sprite.Begin(SpriteSortMode.Immediate, blend);
-            sprite.Draw(texture, rect, color);
+        sprite.Begin(SpriteSortMode.Immediate, blend);
+
+        sprite.Draw(texture,
+                    rect,
+                    sourceRectangle: null,
+                    color,
+                    rotation,
+                    new Vector2(rect.Width / 2, rect.Height / 2),
+                    SpriteEffects.None,
+                    layerDepth: 0);
+
+        sprite.End();
+
+        if (textMode)
+        {
+            sprite.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend);
+        }
+    }
+
+    /// <summary>Draw a texture with source and destination rectangles</summary>
+    public void DrawTexture(Texture2D  texture,
+                            Rectangle  destinationRect,
+                            Rectangle  sourceRect,
+                            Color      color,
+                            BlendState blend)
+    {
+        if (textMode)
+        {
             sprite.End();
-
-            if (textMode)
-                sprite.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend);
         }
 
-        /// <summary>
-        /// Draw a texture with rotation
-        /// </summary>
-        public void DrawTexture(
-            Texture2D texture,
-            Rectangle rect,
-            float rotation,
-            Color color,
-            BlendState blend)
+        sprite.Begin(SpriteSortMode.Immediate, blend);
+        sprite.Draw(texture, destinationRect, sourceRect, color);
+        sprite.End();
+
+        if (textMode)
         {
-            if (textMode)
-                sprite.End();
-
-            rect.X += rect.Width / 2;
-            rect.Y += rect.Height / 2;
-
-            sprite.Begin(SpriteSortMode.Immediate, blend);
-            sprite.Draw(texture, rect, null, color, rotation,
-                new Vector2(rect.Width / 2, rect.Height / 2), SpriteEffects.None, 0);
-            sprite.End();
-
-            if (textMode)
-                sprite.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend);
+            sprite.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend);
         }
+    }
 
-        /// <summary>
-        /// Draw a texture with source and destination rectangles
-        /// </summary>
-        public void DrawTexture(
-            Texture2D texture,
-            Rectangle destinationRect,
-            Rectangle sourceRect,
-            Color color,
-            BlendState blend)
+    #region IDisposable Members
+
+    public bool IsDisposed { get; } = false;
+
+    public void Dispose()
+    {
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
+    }
+
+    private void Dispose(bool disposing)
+    {
+        if (disposing && !IsDisposed)
         {
-            if (textMode)
-                sprite.End();
-
-            sprite.Begin(SpriteSortMode.Immediate, blend);
-            sprite.Draw(texture, destinationRect, sourceRect, color);
-            sprite.End();
-
-            if (textMode)
-                sprite.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend);
-        }
-
-        #region IDisposable Members
-
-        bool isDisposed = false;
-        public bool IsDisposed
-        {
-            get { return isDisposed; }
-        }
-
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        void Dispose(bool disposing)
-        {
-            if (disposing && !isDisposed)
+            if (sprite != null)
             {
-                if (sprite != null)
-                {
-                    sprite.Dispose();
-                    sprite = null;
-                }
+                sprite.Dispose();
+                sprite = null;
             }
         }
-
-        #endregion
     }
+
+    #endregion
 }

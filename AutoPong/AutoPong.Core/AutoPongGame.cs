@@ -1,244 +1,380 @@
 ﻿using System;
+
+using AutoPong.Core.Game;
+
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 
-namespace AutoPong
+namespace AutoPong.Core;
+
+public class AutoPongGame : Microsoft.Xna.Framework.Game
 {
-    public class AutoPongGame : Game
+    private const float BallSpeed = 15.0f;
+
+    private const int PointsPerGame = 4;
+
+    // Window resolution.
+    private readonly Point _gameBounds = new(x: 1280, y: 720);
+
+    private readonly GraphicsDeviceManager _graphics;
+
+    private readonly Random _rand = new();
+
+    private Rectangle _ball;
+
+    private Vector2 _ballPosition;
+
+    private Vector2 _ballVelocity;
+
+    private byte _hitCounter;
+
+    private int _jingleCounter;
+
+    private Rectangle _paddleLeft;
+
+    private Rectangle _paddleRight;
+
+    private int _pointsLeft;
+
+    private int _pointsRight;
+
+    private AudioSource _soundFx;
+
+    private SpriteBatch _spriteBatch;
+
+    private Texture2D _texture;
+
+    public AutoPongGame()
     {
-        private GraphicsDeviceManager _graphics;
-        private SpriteBatch _spriteBatch;
-        private Point GameBounds = new Point(1280, 720); //window resolution
+        _graphics = new GraphicsDeviceManager(this);
 
-        private Rectangle PaddleLeft;
-        private Rectangle PaddleRight;
+        _graphics.PreferredBackBufferWidth  = _gameBounds.X;
+        _graphics.PreferredBackBufferHeight = _gameBounds.Y;
 
-        private Rectangle Ball;
-        private Vector2 BallVelocity;
-        private Vector2 BallPosition;
-        private float BallSpeed = 15.0f;
+        IsMouseVisible = true;
+    }
 
-        public Texture2D Texture;
+    protected override void LoadContent()
+    {
+        _spriteBatch = new SpriteBatch(GraphicsDevice);
 
-        private Random Rand = new Random();
-        private byte HitCounter = 0;
+        Reset();
+    }
 
-        private int PointsLeft;
-        private int PointsRight;
-        private int PointsPerGame = 4;
-
-        private AudioSource SoundFX;
-        private int JingleCounter = 0;
-
-        public AutoPongGame()
+    protected override void Update(GameTime gameTime)
+    {
+        if (!OperatingSystem.IsIOS()
+            && (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed
+                || Keyboard.GetState().IsKeyDown(Keys.Escape)))
         {
-            _graphics = new GraphicsDeviceManager(this);
-            _graphics.PreferredBackBufferWidth = GameBounds.X;
-            _graphics.PreferredBackBufferHeight = GameBounds.Y;
-            IsMouseVisible = true;
+            Exit();
         }
 
-        protected override void LoadContent()
-        {
-            _spriteBatch = new SpriteBatch(GraphicsDevice);
+        UpdateBall();
 
+        SimulateLeftPaddleInput();
+
+        SimulateRightPaddleInput();
+
+        CheckWin();
+
+        PlayResetJingle();
+
+        base.Update(gameTime);
+    }
+
+    private void UpdateBall()
+    {
+        // Limit how fast the ball can move each frame.
+        const float maxVelocity = 1.5f;
+
+        _ballVelocity.X = _ballVelocity.X switch
+        {
+            > maxVelocity  => maxVelocity,
+            < -maxVelocity => -maxVelocity,
+            var _          => _ballVelocity.X
+        };
+
+        _ballVelocity.Y = _ballVelocity.Y switch
+        {
+            > maxVelocity  => maxVelocity,
+            < -maxVelocity => -maxVelocity,
+            var _          => _ballVelocity.Y
+        };
+
+        // Apply the velocity to the position.
+        _ballPosition.X += _ballVelocity.X * BallSpeed;
+        _ballPosition.Y += _ballVelocity.Y * BallSpeed;
+
+        // Check for collision with the paddles.
+        _hitCounter++;
+
+        if (_hitCounter > 10
+            && _paddleLeft.Intersects(_ball))
+        {
+            _ballVelocity.X *= -1;
+            _ballVelocity.Y *= 1.1f;
+            _hitCounter     =  0;
+            _ballPosition.X =  _paddleLeft.X + _paddleLeft.Width + 10;
+
+            _soundFx.PlayWave(frequency: 220.0f, duration: 50, WaveType.Sin, volume: 0.3f);
+        }
+
+        if (_hitCounter > 10
+            && _paddleRight.Intersects(_ball))
+        {
+            _ballVelocity.X *= -1;
+            _ballVelocity.Y *= 1.1f;
+            _hitCounter     =  0;
+            _ballPosition.X =  _paddleRight.X - 10;
+
+            _soundFx.PlayWave(frequency: 220.0f, duration: 50, WaveType.Sin, volume: 0.3f);
+        }
+
+        // Bounce off the screen.
+        // TODO: Does this need to be an `else if`? Will both conditions ever be true at the same time?
+        if (_ballPosition.X < 0)
+        {
+            // Point to the right.
+            _ballPosition.X =  1;
+            _ballVelocity.X *= -1;
+            _pointsRight++;
+            _soundFx.PlayWave(frequency: 440.0f, duration: 50, WaveType.Square, volume: 0.3f);
+        }
+        else if (_ballPosition.X > _gameBounds.X)
+        {
+            // Point to the left.
+            _ballPosition.X =  _gameBounds.X - 1;
+            _ballVelocity.X *= -1;
+            _pointsLeft++;
+
+            _soundFx.PlayWave(frequency: 440.0f, duration: 50, WaveType.Square, volume: 0.3f);
+        }
+
+        // Bounce off the top and bottom.
+        // TODO: Does this need to be an `else if`? Will both conditions ever be true at the same time?
+        if (_ballPosition.Y < 0 + 10)
+        {
+            // Limit to the minimum Y position.
+            _ballPosition.Y =  10 + 1;
+            _ballVelocity.Y *= -(1 + _rand.Next(minValue: -100, maxValue: 101) * 0.005f);
+        }
+        else if (_ballPosition.Y > _gameBounds.Y - 10)
+        {
+            // Limit to the maximum Y position.
+            _ballPosition.Y =  _gameBounds.Y - 11;
+            _ballVelocity.Y *= -(1 + _rand.Next(minValue: -100, maxValue: 101) * 0.005f);
+        }
+    }
+
+    private void SimulateLeftPaddleInput()
+    {
+        // Simple AI - not very good; moves a random amount each frame.
+        int amount       = _rand.Next(minValue: 0, maxValue: 6);
+        int paddleCenter = _paddleLeft.Y + _paddleLeft.Height / 2;
+
+        // TODO: Does this need to be an `else if`? Will both conditions ever be true at the same time?
+        if (paddleCenter < _ballPosition.Y - 20)
+        {
+            _paddleLeft.Y += amount;
+        }
+        else if (paddleCenter > _ballPosition.Y + 20)
+        {
+            _paddleLeft.Y -= amount;
+        }
+
+        LimitPaddle(ref _paddleLeft);
+    }
+
+    private void SimulateRightPaddleInput()
+    {
+        // Simple AI - better than the left; moves % each frame
+        int paddleCenter = _paddleRight.Y + _paddleRight.Height / 2;
+
+        // TODO: Does this need to be an `else if`? Will both conditions ever be true at the same time?
+        if (paddleCenter < _ballPosition.Y - 20)
+        {
+            _paddleRight.Y -= (int)((paddleCenter - _ballPosition.Y) * 0.08f);
+        }
+        else if (paddleCenter > _ballPosition.Y + 20)
+        {
+            _paddleRight.Y += (int)((_ballPosition.Y - paddleCenter) * 0.08f);
+        }
+
+        LimitPaddle(ref _paddleRight);
+    }
+
+    private void CheckWin()
+    {
+        // Check for win condition and reset.
+        if (_pointsLeft >= PointsPerGame)
+        {
+            Reset();
+
+            return;
+        }
+
+        if (_pointsRight >= PointsPerGame)
+        {
             Reset();
         }
+    }
 
-        protected override void Update(GameTime gameTime)
+    private void PlayResetJingle()
+    {
+        // Use the jingle counter as a timeline to play notes.
+        _jingleCounter++;
+
+        const int speed = 7;
+
+        switch (_jingleCounter)
         {
-            if (!OperatingSystem.IsIOS())
-            {
-                if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
-                    Exit();
-            }
+            case speed * 1:
+                _soundFx.PlayWave(frequency: 440.0f, duration: 100, WaveType.Sin, volume: 0.2f);
 
-            #region Update Ball
+                break;
 
-            //limit how fast ball can move each frame
-            float maxVelocity = 1.5f;
-            if (BallVelocity.X > maxVelocity) { BallVelocity.X = maxVelocity; }
-            else if (BallVelocity.X < -maxVelocity) { BallVelocity.X = -maxVelocity; }
-            if (BallVelocity.Y > maxVelocity) { BallVelocity.Y = maxVelocity; }
-            else if (BallVelocity.Y < -maxVelocity) { BallVelocity.Y = -maxVelocity; }
+            case speed * 2:
+                _soundFx.PlayWave(frequency: 523.25f, duration: 100, WaveType.Sin, volume: 0.2f);
 
-            //apply velocity to position
-            BallPosition.X += BallVelocity.X * BallSpeed;
-            BallPosition.Y += BallVelocity.Y * BallSpeed;
+                break;
 
-            //check for collision with paddles
-            HitCounter++;
-            if (HitCounter > 10)
-            {
-                if (PaddleLeft.Intersects(Ball))
-                {
-                    BallVelocity.X *= -1;
-                    BallVelocity.Y *= 1.1f;
-                    HitCounter = 0;
-                    BallPosition.X = PaddleLeft.X + PaddleLeft.Width + 10;
-                    SoundFX.PlayWave(220.0f, 50, WaveType.Sin, 0.3f);
-                }
-                if (PaddleRight.Intersects(Ball))
-                {
-                    BallVelocity.X *= -1;
-                    BallVelocity.Y *= 1.1f;
-                    HitCounter = 0;
-                    BallPosition.X = PaddleRight.X - 10;
-                    SoundFX.PlayWave(220.0f, 50, WaveType.Sin, 0.3f);
-                }
-            }
+            case speed * 3:
+                _soundFx.PlayWave(frequency: 659.25f, duration: 100, WaveType.Sin, volume: 0.2f);
 
-            //bounce on screen
-            if (BallPosition.X < 0) //point for right
-            {
-                BallPosition.X = 1;
-                BallVelocity.X *= -1;
-                PointsRight++;
-                SoundFX.PlayWave(440.0f, 50, WaveType.Square, 0.3f);
-            }
-            else if (BallPosition.X > GameBounds.X) //point for left
-            {
-                BallPosition.X = GameBounds.X - 1;
-                BallVelocity.X *= -1;
-                PointsLeft++;
-                SoundFX.PlayWave(440.0f, 50, WaveType.Square, 0.3f);
-            }
+                break;
 
-            if (BallPosition.Y < 0 + 10) //limit to minimum Y pos
-            {
-                BallPosition.Y = 10 + 1;
-                BallVelocity.Y *= -(1 + Rand.Next(-100, 101) * 0.005f);
-            }
-            else if (BallPosition.Y > GameBounds.Y - 10) //limit to maximum Y pos
-            {
-                BallPosition.Y = GameBounds.Y - 11;
-                BallVelocity.Y *= -(1 + Rand.Next(-100, 101) * 0.005f);
-            }
+            case speed * 4:
+                _soundFx.PlayWave(frequency: 783.99f, duration: 100, WaveType.Sin, volume: 0.2f);
 
-            #endregion
+                break;
 
-            #region Simulate Left Paddle Input
-            {   //simple ai, not very good, moves random amount each frame
-                int amount = Rand.Next(0, 6);
-                int Paddle_Center = PaddleLeft.Y + PaddleLeft.Height / 2;
-                if (Paddle_Center < BallPosition.Y - 20) { PaddleLeft.Y += amount; }
-                else if (Paddle_Center > BallPosition.Y + 20) { PaddleLeft.Y -= amount; }
-                LimitPaddle(ref PaddleLeft);
-            }
-            #endregion Simulate Left Paddle Input
+            // Only play this jingle once.
+            case > speed * 4:
+                _jingleCounter = int.MaxValue - 1;
 
-            #region Simulate Right Paddle Input
-            {   //simple ai, better than left, moves % each frame
-                int Paddle_Center = PaddleRight.Y + PaddleRight.Height / 2;
-                if (Paddle_Center < BallPosition.Y - 20)
-                { PaddleRight.Y -= (int)((Paddle_Center - BallPosition.Y) * 0.08f); }
-                else if (Paddle_Center > BallPosition.Y + 20)
-                { PaddleRight.Y += (int)((BallPosition.Y - Paddle_Center) * 0.08f); }
-                LimitPaddle(ref PaddleRight);
-            }
-            #endregion Simulate Right Paddle Input
+                break;
+        }
+    }
 
-            #region Check Win
-            //Check for win condition, reset
-            if (PointsLeft >= PointsPerGame) { Reset(); }
-            else if (PointsRight >= PointsPerGame) { Reset(); }
-            #endregion Check Win
+    protected override void Draw(GameTime gameTime)
+    {
+        GraphicsDevice.Clear(Color.CornflowerBlue);
 
-            #region Play Reset Jingle
-            //use jingle counter as a timeline to play notes
-            JingleCounter++;
+        _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp);
 
-            int speed = 7;
-            if (JingleCounter == speed * 1) { SoundFX.PlayWave(440.0f, 100, WaveType.Sin, 0.2f); }
-            else if (JingleCounter == speed * 2) { SoundFX.PlayWave(523.25f, 100, WaveType.Sin, 0.2f); }
-            else if (JingleCounter == speed * 3) { SoundFX.PlayWave(659.25f, 100, WaveType.Sin, 0.2f); }
-            else if (JingleCounter == speed * 4) { SoundFX.PlayWave(783.99f, 100, WaveType.Sin, 0.2f); }
-            //only play this jingle once
-            else if (JingleCounter > speed * 4) { JingleCounter = int.MaxValue - 1; }
-            #endregion Play Reset Jingle
+        // Draw dots down the center.
+        DrawCenterLine();
 
-            base.Update(gameTime);
+        // Draw the paddles.
+        DrawPaddles();
+
+        // draw the ball.
+        DrawBall();
+
+        // TODO: What does this do?
+        DrawRectangle(_spriteBatch, _ball, Color.White);
+
+        // Draw the current game points.
+        DrawGamePoints();
+
+        _spriteBatch.End();
+
+        base.Draw(gameTime);
+    }
+
+    private void DrawCenterLine()
+    {
+        int total = _gameBounds.Y / 20;
+
+        for (int index = 0; index < total; index++)
+        {
+            DrawRectangle(_spriteBatch, new Rectangle(_gameBounds.X / 2 - 4, 5 + index * 20, width: 8, height: 8), Color.White * 0.2f);
+        }
+    }
+
+    private void DrawPaddles()
+    {
+        DrawRectangle(_spriteBatch, _paddleLeft, Color.White);
+        DrawRectangle(_spriteBatch, _paddleRight, Color.White);
+    }
+
+    private void DrawBall()
+    {
+        _ball.X = (int)_ballPosition.X;
+        _ball.Y = (int)_ballPosition.Y;
+    }
+
+    private void DrawGamePoints()
+    {
+        for (int index = 0; index < _pointsLeft; index++)
+        {
+            DrawRectangle(_spriteBatch, new Rectangle(_gameBounds.X / 2 - 25 - index * 12, y: 10, width: 10, height: 10), Color.White * 1.0f);
         }
 
-        protected override void Draw(GameTime gameTime)
+        for (int index = 0; index < _pointsRight; index++)
         {
-            GraphicsDevice.Clear(Color.CornflowerBlue);
+            DrawRectangle(_spriteBatch, new Rectangle(_gameBounds.X / 2 + 15 + index * 12, y: 10, width: 10, height: 10), Color.White * 1.0f);
+        }
+    }
 
-            _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp);
+    private void DrawRectangle(SpriteBatch spriteBatch, Rectangle rectangle, Color color)
+    {
+        Vector2 position = new(rectangle.X, rectangle.Y);
 
-            //draw dots down center
-            int total = GameBounds.Y / 20;
-            for (int i = 0; i < total; i++)
-            {
-                DrawRectangle(_spriteBatch, new Rectangle(GameBounds.X / 2 - 4, 5 + (i * 20), 8, 8), Color.White * 0.2f);
-            }
+        spriteBatch.Draw(_texture,
+                         position,
+                         rectangle,
+                         color * 1.0f,
+                         rotation: 0,
+                         Vector2.Zero,
+                         scale: 1.0f,
+                         SpriteEffects.None,
+                         layerDepth: 0.00001f);
+    }
 
-            //draw paddles
-            DrawRectangle(_spriteBatch, PaddleLeft, Color.White);
-            DrawRectangle(_spriteBatch, PaddleRight, Color.White);
+    private void LimitPaddle(ref Rectangle paddle)
+    {
+        // Limit how far the paddles can travel on the Y axis so they don't exceed the top or bottom.
+        if (paddle.Y < 10)
+        {
+            paddle.Y = 10;
 
-            //draw ball
-            Ball.X = (int)BallPosition.X;
-            Ball.Y = (int)BallPosition.Y;
-            DrawRectangle(_spriteBatch, Ball, Color.White);
-
-            //draw current game points
-            for (int i = 0; i < PointsLeft; i++)
-            {
-                DrawRectangle(_spriteBatch, new Rectangle((GameBounds.X / 2 - 25) - i * 12, 10, 10, 10), Color.White * 1.0f);
-            }
-            for (int i = 0; i < PointsRight; i++)
-            {
-                DrawRectangle(_spriteBatch, new Rectangle((GameBounds.X / 2 + 15) + i * 12, 10, 10, 10), Color.White * 1.0f);
-            }
-
-            _spriteBatch.End();
-
-            base.Draw(gameTime);
+            return;
         }
 
-        private void DrawRectangle(SpriteBatch sb, Rectangle Rec, Color color)
+        if (paddle.Y + paddle.Height > _gameBounds.Y - 10)
         {
-            Vector2 pos = new Vector2(Rec.X, Rec.Y);
-            sb.Draw(Texture, pos, Rec,
-                color * 1.0f,
-                0, Vector2.Zero, 1.0f,
-                SpriteEffects.None, 0.00001f);
+            paddle.Y = _gameBounds.Y - 10 - paddle.Height;
+        }
+    }
+
+    private void Reset()
+    {
+        // Create the texture with which to draw if it does not exist.
+        if (_texture is null)
+        {
+            _texture = new Texture2D(_graphics.GraphicsDevice, width: 1, height: 1);
+
+            _texture.SetData([Color.White]);
         }
 
-        private void LimitPaddle(ref Rectangle Paddle)
-        {
-            //limit how far paddles can travel on Y axis so they dont exceed top or bottom
-            if (Paddle.Y < 10) { Paddle.Y = 10; }
-            else if (Paddle.Y + Paddle.Height > GameBounds.Y - 10)
-            { Paddle.Y = GameBounds.Y - 10 - Paddle.Height; }
-        }
+        const int paddleHeight = 100;
 
-        private void Reset()
-        {
-            if (Texture == null)
-            {   //create texture to draw with if it does not exist
-                Texture = new Texture2D(_graphics.GraphicsDevice, 1, 1);
-                Texture.SetData<Color>(new Color[] { Color.White });
-            }
+        _paddleLeft  = new Rectangle(0             + 10, y: 150, width: 20, paddleHeight);
+        _paddleRight = new Rectangle(_gameBounds.X - 30, y: 150, width: 20, paddleHeight);
 
-            int PaddleHeight = 100;
-            PaddleLeft = new Rectangle(0 + 10, 150, 20, PaddleHeight);
-            PaddleRight = new Rectangle(GameBounds.X - 30, 150, 20, PaddleHeight);
+        // ReSharper disable once PossibleLossOfFraction
+        _ballPosition = new Vector2(_gameBounds.X / 2, y: 200);
+        _ball         = new Rectangle((int)_ballPosition.X, (int)_ballPosition.Y, width: 10, height: 10);
+        _ballVelocity = new Vector2(x: 1, y: 0.1f);
 
-            BallPosition = new Vector2(GameBounds.X / 2, 200);
-            Ball = new Rectangle((int)BallPosition.X, (int)BallPosition.Y, 10, 10);
-            BallVelocity = new Vector2(1, 0.1f);
+        _pointsLeft    = 0;
+        _pointsRight   = 0;
+        _jingleCounter = 0;
 
-            PointsLeft = 0; PointsRight = 0;
-            JingleCounter = 0;
-
-            //setup sound sources
-            if (SoundFX == null)
-            {
-                SoundFX = new AudioSource();
-            }
-        }
+        // Set up the sound sources
+        _soundFx ??= new AudioSource();
     }
 }

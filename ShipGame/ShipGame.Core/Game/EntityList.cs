@@ -1,207 +1,202 @@
-#region File Description
-//-----------------------------------------------------------------------------
-// EntityList.cs
-//
-// Microsoft XNA Community Game Platform
-// Copyright (C) Microsoft Corporation. All rights reserved.
-//-----------------------------------------------------------------------------
-#endregion
-
 #region Using Statements
-using Microsoft.Xna.Framework;
+
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using System.Xml.Serialization;
 using System.Linq;
-using System.Xml;
 using System.Xml.Linq;
+
+using Microsoft.Xna.Framework;
+
 #endregion
 
-namespace ShipGame
-{
-    public struct Entity
-    {
-        public String name;            // entity name
-        public Matrix transform;       // entity transform matrix
+namespace ShipGame.Core.Game;
 
-        public Entity()
-        {
-            name = string.Empty;
-            transform = Matrix.Identity;
-        }
-        /// <summary>
-        /// Create a new entity with given name and transform matrix
-        /// </summary>
-        public Entity(String entityName, Matrix entityTransform)
-        {
-            name = entityName;
-            transform = entityTransform;
-        }
+public struct Entity
+{
+    public string name; // entity name
+
+    public Matrix transform; // entity transform matrix
+
+    public Entity()
+    {
+        name      = string.Empty;
+        transform = Matrix.Identity;
     }
 
-    public class EntityList
+    /// <summary>Create a new entity with given name and transform matrix</summary>
+    public Entity(string entityName, Matrix entityTransform)
     {
-        // entities list
-        public List<Entity> entities = new List<Entity>();
+        name      = entityName;
+        transform = entityTransform;
+    }
+}
 
-        // last random number generated (to prevent repetition)
-        int lastRandom = -1;
+public class EntityList
+{
+    // entities list
+    public List<Entity> entities = new();
 
-        public EntityList () {}
+    // last random number generated (to prevent repetition)
+    private int lastRandom = -1;
 
-        /// <summary>
-        /// Get the entity transform matrix
-        /// </summary>
-        public Matrix GetTransform(String name)
+    /// <summary>Get the list of entities</summary>
+    public List<Entity> Entities => entities;
+
+    /// <summary>Get the entity transform matrix</summary>
+    public Matrix GetTransform(string name)
+    {
+        foreach (Entity e in entities)
         {
-            foreach (Entity e in entities)
+            if (e.name == name)
             {
-                if (e.name == name)
-                {
-                    return e.transform;
-                }
+                return e.transform;
             }
+        }
 
+        return Matrix.Identity;
+    }
+
+    /// <summary>Get a random transform matrix from the list preventing repetiton</summary>
+    public Matrix GetTransformRandom(Random random)
+    {
+        // if no itens return indentity
+        if (entities.Count == 0)
+        {
             return Matrix.Identity;
         }
 
-        /// <summary>
-        /// Get a random transform matrix from the list preventing repetiton
-        /// </summary>
-        public Matrix GetTransformRandom(Random random)
+        // if only one item available return it
+        if (entities.Count == 1)
         {
-            // if no itens return indentity
-            if (entities.Count == 0)
-                return Matrix.Identity;
-
-            // if only one item available return it
-            if (entities.Count == 1)
-                return entities[0].transform;
-
-            // pick a random item different from the last one
-            int rnd;
-            do
-            {
-                rnd = random.Next(entities.Count);
-            } while (rnd == lastRandom);
-
-            // set new last random number
-            lastRandom = rnd;
-
-            // return transform for random pick
-            return entities[rnd].transform;
+            return entities[index: 0].transform;
         }
 
-        /// <summary>
-        /// Get the list of entities
-        /// </summary>
-        public List<Entity> Entities
+        // pick a random item different from the last one
+        int rnd;
+
+        do
         {
-            get { return entities; }
+            rnd = random.Next(entities.Count);
+        }
+        while (rnd == lastRandom);
+
+        // set new last random number
+        lastRandom = rnd;
+
+        // return transform for random pick
+        return entities[rnd].transform;
+    }
+
+    /// <summary>Save the list to a xml file</summary>
+    public bool Save(string filename)
+    {
+        // open stream
+        Stream stream;
+        stream = File.Create(filename);
+
+        if (stream == null)
+        {
+            return false;
         }
 
-        /// <summary>
-        /// Save the list to a xml file
-        /// </summary>
-        public bool Save(String filename)
+        XDocument document = new();
+
+        document.Add("EntityList",
+                     new XElement(name: "entities",
+                                  () =>
+                                  {
+                                      List<XElement> contents = new();
+
+                                      foreach (Entity e in entities)
+                                      {
+                                          XElement transform = new(name: "transform");
+                                          transform.Add("M11", e.transform.M11);
+                                          transform.Add("M12", e.transform.M12);
+                                          transform.Add("M13", e.transform.M13);
+                                          transform.Add("M14", e.transform.M14);
+                                          transform.Add("M21", e.transform.M21);
+                                          transform.Add("M22", e.transform.M22);
+                                          transform.Add("M23", e.transform.M23);
+                                          transform.Add("M24", e.transform.M24);
+                                          transform.Add("M31", e.transform.M31);
+                                          transform.Add("M32", e.transform.M32);
+                                          transform.Add("M33", e.transform.M33);
+                                          transform.Add("M34", e.transform.M34);
+                                          transform.Add("M41", e.transform.M41);
+                                          transform.Add("M42", e.transform.M42);
+                                          transform.Add("M43", e.transform.M43);
+                                          transform.Add("M44", e.transform.M44);
+                                          contents.Add(new XElement(name: "Entity", new XElement(name: "name"), transform));
+                                      }
+
+                                      return contents;
+                                  }));
+
+        document.Save(stream);
+
+        // close
+        stream.Close();
+        stream = null;
+
+        return true;
+    }
+
+    /// <summary>Static function to load a entity list from a xml file</summary>
+    public static EntityList Load(string filename)
+    {
+        // open file
+        Stream stream;
+
+        try
         {
-            // open stream
-            Stream stream;
-            stream = File.Create(filename);
-            if (stream == null)
-                return false;
-
-            XDocument document = new XDocument ();
-            document.Add ("EntityList", new XElement ("entities", () => {
-                List<XElement> contents = new List<XElement>();
-                foreach (Entity e in entities) {
-                    XElement transform = new XElement("transform");
-                    transform.Add ("M11", e.transform.M11);
-                    transform.Add ("M12", e.transform.M12);
-                    transform.Add ("M13", e.transform.M13);
-                    transform.Add ("M14", e.transform.M14);
-                    transform.Add ("M21", e.transform.M21);
-                    transform.Add ("M22", e.transform.M22);
-                    transform.Add ("M23", e.transform.M23);
-                    transform.Add ("M24", e.transform.M24);
-                    transform.Add ("M31", e.transform.M31);
-                    transform.Add ("M32", e.transform.M32);
-                    transform.Add ("M33", e.transform.M33);
-                    transform.Add ("M34", e.transform.M34);
-                    transform.Add ("M41", e.transform.M41);
-                    transform.Add ("M42", e.transform.M42);
-                    transform.Add ("M43", e.transform.M43);
-                    transform.Add ("M44", e.transform.M44);
-                    contents.Add (new XElement("Entity", new XElement ("name"), transform));
-                }
-                return contents;
-            } ));   
-
-            document.Save (stream);
-
-            // close
-            stream.Close();
+            stream = TitleContainer.OpenStream(filename);
+        }
+        catch (FileNotFoundException e)
+        {
+            Console.WriteLine("EntityList load error:" + e.Message);
             stream = null;
-
-            return true;
         }
 
-        /// <summary>
-        /// Static function to load a entity list from a xml file
-        /// </summary>
-        public static EntityList Load(String filename)
+        if (stream == null)
         {
-            // open file
-            Stream stream;
-            try
-            {
-                stream = TitleContainer.OpenStream(filename);
-            }
-            catch (FileNotFoundException e)
-            {
-                System.Console.WriteLine("EntityList load error:" + e.Message);
-                stream = null;
-            }
-            if (stream == null)
-                return null;
-
-            EntityList entityList = new EntityList();
-            XDocument document = XDocument.Load(stream);
-            var entityElements = document.Descendants("Entity");
-            IEnumerable<Entity> entities = entityElements.Select(element => new Entity
-            {
-                name = element.Element("name")?.Value ?? "unknown",
-                transform = new Matrix (
-                    float.Parse (element.Element("transform")?.Element ("M11")?.Value ?? "0"),
-                    float.Parse (element.Element("transform")?.Element ("M12")?.Value ?? "0"),
-                    float.Parse (element.Element("transform")?.Element ("M13")?.Value ?? "0"),
-                    float.Parse (element.Element("transform")?.Element ("M14")?.Value ?? "0"),
-                    float.Parse (element.Element("transform")?.Element ("M21")?.Value ?? "0"),
-                    float.Parse (element.Element("transform")?.Element ("M22")?.Value ?? "0"),
-                    float.Parse (element.Element("transform")?.Element ("M23")?.Value ?? "0"),
-                    float.Parse (element.Element("transform")?.Element ("M24")?.Value ?? "0"),
-                    float.Parse (element.Element("transform")?.Element ("M31")?.Value ?? "0"),
-                    float.Parse (element.Element("transform")?.Element ("M32")?.Value ?? "0"),
-                    float.Parse (element.Element("transform")?.Element ("M33")?.Value ?? "0"),
-                    float.Parse (element.Element("transform")?.Element ("M34")?.Value ?? "0"),
-                    float.Parse (element.Element("transform")?.Element ("M41")?.Value ?? "0"),
-                    float.Parse (element.Element("transform")?.Element ("M42")?.Value ?? "0"),
-                    float.Parse (element.Element("transform")?.Element ("M43")?.Value ?? "0"),
-                    float.Parse (element.Element("transform")?.Element ("M44")?.Value ?? "0")
-                ),
-            });
-            foreach (Entity entity in entities)
-            {
-                entityList.entities.Add(entity);
-            }
-
-            // close
-            stream.Close();
-            stream = null;
-
-            return entityList;
+            return null;
         }
+
+        EntityList            entityList     = new();
+        XDocument             document       = XDocument.Load(stream);
+        IEnumerable<XElement> entityElements = document.Descendants(name: "Entity");
+
+        IEnumerable<Entity> entities = entityElements.Select(element => new Entity
+        {
+            name = element.Element(name: "name")?.Value ?? "unknown",
+            transform = new Matrix(float.Parse(element.Element(name: "transform")?.Element(name: "M11")?.Value ?? "0"),
+                                   float.Parse(element.Element(name: "transform")?.Element(name: "M12")?.Value ?? "0"),
+                                   float.Parse(element.Element(name: "transform")?.Element(name: "M13")?.Value ?? "0"),
+                                   float.Parse(element.Element(name: "transform")?.Element(name: "M14")?.Value ?? "0"),
+                                   float.Parse(element.Element(name: "transform")?.Element(name: "M21")?.Value ?? "0"),
+                                   float.Parse(element.Element(name: "transform")?.Element(name: "M22")?.Value ?? "0"),
+                                   float.Parse(element.Element(name: "transform")?.Element(name: "M23")?.Value ?? "0"),
+                                   float.Parse(element.Element(name: "transform")?.Element(name: "M24")?.Value ?? "0"),
+                                   float.Parse(element.Element(name: "transform")?.Element(name: "M31")?.Value ?? "0"),
+                                   float.Parse(element.Element(name: "transform")?.Element(name: "M32")?.Value ?? "0"),
+                                   float.Parse(element.Element(name: "transform")?.Element(name: "M33")?.Value ?? "0"),
+                                   float.Parse(element.Element(name: "transform")?.Element(name: "M34")?.Value ?? "0"),
+                                   float.Parse(element.Element(name: "transform")?.Element(name: "M41")?.Value ?? "0"),
+                                   float.Parse(element.Element(name: "transform")?.Element(name: "M42")?.Value ?? "0"),
+                                   float.Parse(element.Element(name: "transform")?.Element(name: "M43")?.Value ?? "0"),
+                                   float.Parse(element.Element(name: "transform")?.Element(name: "M44")?.Value ?? "0"))
+        });
+
+        foreach (Entity entity in entities)
+        {
+            entityList.entities.Add(entity);
+        }
+
+        // close
+        stream.Close();
+        stream = null;
+
+        return entityList;
     }
 }
