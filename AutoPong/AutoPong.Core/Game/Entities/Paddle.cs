@@ -61,6 +61,21 @@ public sealed class Paddle
 
     public bool IsIntersectingWithBall(Ball ball) => _body.Intersects(ball.Body);
 
+    public bool IsSandwichingBallAgainstWall(Ball ball)
+    {
+        switch (Location)
+        {
+            case PaddleLocations.Left
+                when ball.PositionX <= _body.X - ball.Body.Width:
+            case PaddleLocations.Right
+                when ball.PositionX >= _body.X + _body.Width * 1.5:
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
     public void Update(Ball ball)
     {
         SimulatePaddleInput(ball);

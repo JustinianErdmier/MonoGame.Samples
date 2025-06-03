@@ -80,6 +80,25 @@ public class InputState
     /// <summary>Has the user scrolled the mouse wheel up?</summary>
     public bool IsMouseWheelScrolledUp { get; private set; }
 
+    public bool IsNewKeyPress(Keys key, PlayerIndex? controllingPlayer = null)
+    {
+        // Accept input from any player.
+        if (!controllingPlayer.HasValue)
+        {
+            return IsNewKeyPress(key, PlayerIndex.One)
+                   || IsNewKeyPress(key, PlayerIndex.Two)
+                   || IsNewKeyPress(key, PlayerIndex.Three)
+                   || IsNewKeyPress(key, PlayerIndex.Four);
+        }
+
+        // Read input from the specified player.
+        PlayerIndex playerIndex = controllingPlayer.Value;
+
+        int index = (int)playerIndex;
+
+        return CurrentKeyboardStates[index].IsKeyDown(key) && LastKeyboardStates[index].IsKeyUp(key);
+    }
+
     /// <summary>Reads the latest state of all the inputs.</summary>
     /// <param name="gameTime">Provides a snapshot of timing values.</param>
     /// <param name="viewport">The viewport to constrain cursor movement within.</param>

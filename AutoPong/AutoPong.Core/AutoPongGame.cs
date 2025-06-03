@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
+using AutoPong.Core.Game;
 using AutoPong.Core.Game.Core;
 using AutoPong.Core.Game.Entities;
 using AutoPong.Core.Game.Enums;
@@ -19,7 +20,10 @@ public sealed class AutoPongGame : Microsoft.Xna.Framework.Game
 
     private readonly Ball _ball;
 
-    private readonly GraphicsDeviceManager _graphics;
+    // ReSharper disable once PrivateFieldCanBeConvertedToLocalVariable
+    private readonly GraphicsDeviceManager _graphicsDeviceManager;
+
+    private readonly InputState _inputState = new();
 
     private readonly JingleService _jingleService;
 
@@ -27,14 +31,14 @@ public sealed class AutoPongGame : Microsoft.Xna.Framework.Game
 
     private DrawingService? _drawingService;
 
-    private Texture2D? _texture;
+    private bool _isPaused = GameOptions.IsPausedByDefault;
 
     public AutoPongGame()
     {
-        _graphics = new GraphicsDeviceManager(this);
+        _graphicsDeviceManager = new GraphicsDeviceManager(this);
 
-        _graphics.PreferredBackBufferWidth  = GameOptions.WindowResolution.X;
-        _graphics.PreferredBackBufferHeight = GameOptions.WindowResolution.Y;
+        _graphicsDeviceManager.PreferredBackBufferWidth  = GameOptions.WindowResolution.X;
+        _graphicsDeviceManager.PreferredBackBufferHeight = GameOptions.WindowResolution.Y;
 
         SoundService soundService = new(new AudioProvider());
 
@@ -55,23 +59,33 @@ public sealed class AutoPongGame : Microsoft.Xna.Framework.Game
 
     protected override void Initialize()
     {
-        InitializeTexture();
         InitializeServices();
         InitializeEntities();
     }
 
     protected override void Update(GameTime gameTime)
     {
+        _inputState.Update(gameTime, GraphicsDevice.Viewport);
+
         if (!OperatingSystem.IsIOS()
-            && (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed
-                || Keyboard.GetState().IsKeyDown(Keys.Escape)))
+            && _inputState.IsNewKeyPress(Keys.Escape))
         {
             Exit();
         }
 
-        _ball.Update();
 
-        _paddles.ForEach(x => x.Update(_ball));
+        if (!OperatingSystem.IsIOS()
+            && _inputState.IsNewKeyPress(Keys.Space))
+        {
+            _isPaused = !_isPaused;
+        }
+
+        if (!_isPaused)
+        {
+            _ball.Update();
+
+            _paddles.ForEach(x => x.Update(_ball));
+        }
 
         _jingleService.Play();
 
@@ -98,19 +112,6 @@ public sealed class AutoPongGame : Microsoft.Xna.Framework.Game
 
     private void HandlePaddleWinning(object? sender, EventArgs eventArgs) => Reinitialize();
 
-    /// <summary>Creates the <see cref="_texture" /> with which to draw if it does not exist.</summary>
-    private void InitializeTexture()
-    {
-        if (_texture is not null)
-        {
-            return;
-        }
-
-        _texture = new Texture2D(_graphics.GraphicsDevice, width: 1, height: 1);
-
-        _texture.SetData([GameOptions.Colors.Texture]);
-    }
-
     private void InitializeEntities()
     {
         _ball.Initialize();
@@ -119,19 +120,13 @@ public sealed class AutoPongGame : Microsoft.Xna.Framework.Game
 
     private void InitializeServices()
     {
-        if (_texture is null)
-        {
-            throw new Exception(message: "Texture must be initialized before services can be initialized.");
-        }
-
-        _drawingService ??= new DrawingService(GraphicsDevice, new SpriteBatch(GraphicsDevice), _texture);
+        _drawingService ??= new DrawingService(GraphicsDevice, new SpriteBatch(GraphicsDevice));
 
         _jingleService.Initialize();
     }
 
     public void Reinitialize()
     {
-        InitializeTexture();
         InitializeServices();
         InitializeEntities();
     }

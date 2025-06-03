@@ -11,6 +11,8 @@ namespace AutoPong.Core.Game.Entities;
 
 public sealed class Ball
 {
+    private const byte CollisionCooldown = 20;
+
     private const float MaxVelocity = 1.5f;
 
     private const float Speed = 15.0f;
@@ -30,8 +32,7 @@ public sealed class Ball
 
     private Rectangle _body = InitialBody;
 
-    // TODO: What is this for?
-    private byte _hitCounter;
+    private byte _framesWithoutCollisionCount;
 
     private Vector2 _position = InitialPosition;
 
@@ -92,7 +93,7 @@ public sealed class Ball
         _position.Y += _velocity.Y * speed;
 
         // Check for collision with the paddles.
-        _hitCounter++;
+        _framesWithoutCollisionCount++;
 
         // TODO: Check if the ball is behind the paddles. If so, don't check for collisions with the paddle.
         foreach (Paddle paddle in _paddles)
@@ -122,6 +123,8 @@ public sealed class Ball
             return Speed;
         }
 
+        const int padding = 25;
+
         bool isNearAPaddle = false;
 
         foreach (Paddle paddle in _paddles.TakeWhile(_ => !isNearAPaddle))
@@ -129,9 +132,9 @@ public sealed class Ball
             switch (paddle.Location)
             {
                 case PaddleLocations.Left
-                    when _position.X < paddle.X + paddle.Width + 50:
+                    when _position.X < paddle.X + paddle.Width + padding:
                 case PaddleLocations.Right
-                    when _position.X > paddle.X - 50:
+                    when _position.X > paddle.X - padding:
                     isNearAPaddle = true;
 
                     break;
@@ -149,7 +152,6 @@ public sealed class Ball
     private void LimitBall()
     {
         // Limit to the minimum Y position.
-        // TODO: Where does the number 10 come from?
         if (_position.Y < 10)
         {
             _position.Y =  11;
@@ -159,22 +161,27 @@ public sealed class Ball
         }
 
         // Limit to the maximum Y position.
-        if (_position.Y > GameOptions.WindowResolution.Y - 10)
+        if (!(_position.Y > GameOptions.WindowResolution.Y - 10))
         {
-            _position.Y =  GameOptions.WindowResolution.Y - 11;
-            _velocity.Y *= -(1 + AutoPongGame.Rand.Next(minValue: -100, maxValue: 101) * 0.005f);
+            return;
         }
+
+        _position.Y =  GameOptions.WindowResolution.Y - 11;
+        _velocity.Y *= -(1 + AutoPongGame.Rand.Next(minValue: -100, maxValue: 101) * 0.005f);
     }
+
+    private void ResetFramesWithoutCollisionCount() => _framesWithoutCollisionCount = 0;
 
     private void UpdateWithLeftPaddle(Paddle paddle)
     {
-        if (_hitCounter > 10
+        if (_framesWithoutCollisionCount > CollisionCooldown
             && paddle.IsIntersectingWithBall(this))
         {
+            _position.X =  paddle.X + paddle.Width + 10;
             _velocity.X *= -1;
             _velocity.Y *= 1.1f;
-            _hitCounter =  0;
-            _position.X =  paddle.X + paddle.Width + 10;
+
+            ResetFramesWithoutCollisionCount();
 
             _soundService.PlayBallHittingAPaddleSound();
         }
@@ -194,13 +201,14 @@ public sealed class Ball
 
     private void UpdateWithRightPaddle(Paddle paddle)
     {
-        if (_hitCounter > 10
+        if (_framesWithoutCollisionCount > CollisionCooldown
             && paddle.IsIntersectingWithBall(this))
         {
+            _position.X =  paddle.X - 10;
             _velocity.X *= -1;
             _velocity.Y *= 1.1f;
-            _hitCounter =  0;
-            _position.X =  paddle.X - 10;
+
+            ResetFramesWithoutCollisionCount();
 
             _soundService.PlayBallHittingAPaddleSound();
         }
