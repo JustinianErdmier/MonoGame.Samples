@@ -60,7 +60,7 @@ public sealed class DrawingService
         {
             ball.Draw();
 
-            DrawRectangle(ball.BallRectangle, GameOptions.Colors.Ball);
+            DrawRectangle(ball.Body, GameOptions.Colors.Ball);
 
             return _drawingService;
         }
@@ -81,7 +81,7 @@ public sealed class DrawingService
         {
             foreach (Paddle paddle in paddles)
             {
-                DrawRectangle(paddle.PaddleRectangle, GameOptions.Colors.Paddles);
+                DrawRectangle(paddle.Body, GameOptions.Colors.Paddles);
             }
 
             return _drawingService;

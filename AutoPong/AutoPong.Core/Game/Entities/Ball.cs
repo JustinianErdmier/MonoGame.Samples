@@ -14,25 +14,25 @@ public sealed class Ball
 
     private const float Speed = 15.0f;
 
-    private static readonly Vector2 InitialVelocity = new(x: 1, y: 0.1f);
-
     // ReSharper disable once PossibleLossOfFraction
     private static readonly Vector2 InitialPosition = new(GameOptions.WindowResolution.X / 2, y: 200);
 
-    private static readonly Rectangle InitialBall = new((int)InitialPosition.X, (int)InitialPosition.Y, width: 10, height: 10);
+    private static readonly Rectangle InitialBody = new((int)InitialPosition.X, (int)InitialPosition.Y, width: 10, height: 10);
+
+    private static readonly Vector2 InitialVelocity = new(x: 1, y: 0.1f);
 
     private readonly List<Paddle> _paddles;
 
     private readonly SoundService _soundService;
 
-    private Rectangle _ball = InitialBall;
-
-    private Vector2 _ballPosition = InitialPosition;
-
-    private Vector2 _ballVelocity = InitialVelocity;
+    private Rectangle _body = InitialBody;
 
     // TODO: What is this for?
     private byte _hitCounter;
+
+    private Vector2 _position = InitialPosition;
+
+    private Vector2 _velocity = InitialVelocity;
 
     public Ball(List<Paddle> paddles, SoundService soundService)
     {
@@ -40,51 +40,51 @@ public sealed class Ball
         _soundService = soundService;
     }
 
-    public Rectangle BallRectangle => _ball;
+    public Rectangle Body => _body;
 
     // ReSharper disable once UnusedMember.Global
-    public float PositionX => _ballPosition.X;
+    public float PositionX => _position.X;
 
-    public float PositionY => _ballPosition.Y;
-
-    // ReSharper disable once UnusedMember.Global
-    public float VelocityX => _ballVelocity.X;
+    public float PositionY => _position.Y;
 
     // ReSharper disable once UnusedMember.Global
-    public float VelocityY => _ballVelocity.Y;
+    public float VelocityX => _velocity.X;
+
+    // ReSharper disable once UnusedMember.Global
+    public float VelocityY => _velocity.Y;
 
     public void Draw()
     {
-        _ball.X = (int)_ballPosition.X;
-        _ball.Y = (int)_ballPosition.Y;
+        _body.X = (int)_position.X;
+        _body.Y = (int)_position.Y;
     }
 
     public void Initialize()
     {
-        _ball         = InitialBall;
-        _ballPosition = InitialPosition;
-        _ballVelocity = InitialVelocity;
+        _body     = InitialBody;
+        _position = InitialPosition;
+        _velocity = InitialVelocity;
     }
 
     public void Update()
     {
-        _ballVelocity.X = _ballVelocity.X switch
+        _velocity.X = _velocity.X switch
         {
             > MaxVelocity  => MaxVelocity,
             < -MaxVelocity => -MaxVelocity,
-            var _          => _ballVelocity.X
+            var _          => _velocity.X
         };
 
-        _ballVelocity.Y = _ballVelocity.Y switch
+        _velocity.Y = _velocity.Y switch
         {
             > MaxVelocity  => MaxVelocity,
             < -MaxVelocity => -MaxVelocity,
-            var _          => _ballVelocity.Y
+            var _          => _velocity.Y
         };
 
         // Apply the velocity to the position.
-        _ballPosition.X += _ballVelocity.X * Speed;
-        _ballPosition.Y += _ballVelocity.Y * Speed;
+        _position.X += _velocity.X * Speed;
+        _position.Y += _velocity.Y * Speed;
 
         // Check for collision with the paddles.
         _hitCounter++;
@@ -113,19 +113,19 @@ public sealed class Ball
     {
         // Limit to the minimum Y position.
         // TODO: Where does the number 10 come from?
-        if (_ballPosition.Y < 10)
+        if (_position.Y < 10)
         {
-            _ballPosition.Y =  11;
-            _ballVelocity.Y *= -(1 + AutoPongGame.Rand.Next(minValue: -100, maxValue: 101) * 0.005f);
+            _position.Y =  11;
+            _velocity.Y *= -(1 + AutoPongGame.Rand.Next(minValue: -100, maxValue: 101) * 0.005f);
 
             return;
         }
 
         // Limit to the maximum Y position.
-        if (_ballPosition.Y > GameOptions.WindowResolution.Y - 10)
+        if (_position.Y > GameOptions.WindowResolution.Y - 10)
         {
-            _ballPosition.Y =  GameOptions.WindowResolution.Y - 11;
-            _ballVelocity.Y *= -(1 + AutoPongGame.Rand.Next(minValue: -100, maxValue: 101) * 0.005f);
+            _position.Y =  GameOptions.WindowResolution.Y - 11;
+            _velocity.Y *= -(1 + AutoPongGame.Rand.Next(minValue: -100, maxValue: 101) * 0.005f);
         }
     }
 
@@ -134,21 +134,21 @@ public sealed class Ball
         if (_hitCounter > 10
             && paddle.IsIntersectingWithBall(this))
         {
-            _ballVelocity.X *= -1;
-            _ballVelocity.Y *= 1.1f;
-            _hitCounter     =  0;
-            _ballPosition.X =  paddle.X + paddle.Width + 10;
+            _velocity.X *= -1;
+            _velocity.Y *= 1.1f;
+            _hitCounter =  0;
+            _position.X =  paddle.X + paddle.Width + 10;
 
             _soundService.PlayBallHittingAPaddleSound();
         }
 
-        if (!(_ballPosition.X > GameOptions.WindowResolution.X))
+        if (!(_position.X > GameOptions.WindowResolution.X))
         {
             return;
         }
 
-        _ballPosition.X =  GameOptions.WindowResolution.X - 1;
-        _ballVelocity.X *= -1;
+        _position.X =  GameOptions.WindowResolution.X - 1;
+        _velocity.X *= -1;
 
         paddle.IncrementScore();
 
@@ -160,21 +160,21 @@ public sealed class Ball
         if (_hitCounter > 10
             && paddle.IsIntersectingWithBall(this))
         {
-            _ballVelocity.X *= -1;
-            _ballVelocity.Y *= 1.1f;
-            _hitCounter     =  0;
-            _ballPosition.X =  paddle.X - 10;
+            _velocity.X *= -1;
+            _velocity.Y *= 1.1f;
+            _hitCounter =  0;
+            _position.X =  paddle.X - 10;
 
             _soundService.PlayBallHittingAPaddleSound();
         }
 
-        if (!(_ballPosition.X < 0))
+        if (!(_position.X < 0))
         {
             return;
         }
 
-        _ballPosition.X =  1;
-        _ballVelocity.X *= -1;
+        _position.X =  1;
+        _velocity.X *= -1;
 
         paddle.IncrementScore();
 
