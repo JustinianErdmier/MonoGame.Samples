@@ -1,4 +1,6 @@
-﻿using AutoPong.Core.Game.Core;
+﻿using System.Collections.Generic;
+
+using AutoPong.Core.Game.Core;
 using AutoPong.Core.Game.Entities;
 using AutoPong.Core.Game.Enums;
 
@@ -75,7 +77,7 @@ public sealed class DrawingService
             return _drawingService;
         }
 
-        public DrawingService Paddles(params Paddle[] paddles)
+        public DrawingService Paddles(List<Paddle> paddles)
         {
             foreach (Paddle paddle in paddles)
             {
@@ -85,7 +87,7 @@ public sealed class DrawingService
             return _drawingService;
         }
 
-        public DrawingService ScorePoints(params Paddle[] paddles)
+        public DrawingService ScorePoints(List<Paddle> paddles)
         {
             foreach (Paddle paddle in paddles)
             {

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 using AutoPong.Core.Game.Core;
 using AutoPong.Core.Game.Entities;
@@ -22,9 +23,7 @@ public sealed class AutoPongGame : Microsoft.Xna.Framework.Game
 
     private readonly JingleService _jingleService;
 
-    private readonly Paddle _paddleLeft;
-
-    private readonly Paddle _paddleRight;
+    private readonly List<Paddle> _paddles;
 
     private DrawingService? _drawingService;
 
@@ -41,10 +40,13 @@ public sealed class AutoPongGame : Microsoft.Xna.Framework.Game
 
         _jingleService = new JingleService(soundService);
 
-        _paddleLeft  = new Paddle(this, PaddleLocations.Left);
-        _paddleRight = new Paddle(this, PaddleLocations.Right);
+        _paddles = new List<Paddle>
+        {
+            new(this, PaddleLocations.Left),
+            new(this, PaddleLocations.Right)
+        };
 
-        _ball = new Ball(_paddleLeft, _paddleRight, soundService);
+        _ball = new Ball(_paddles, soundService);
 
         IsMouseVisible = GameOptions.IsMouseVisible;
     }
@@ -67,9 +69,7 @@ public sealed class AutoPongGame : Microsoft.Xna.Framework.Game
 
         _ball.Update();
 
-        _paddleLeft.Update(_ball);
-
-        _paddleRight.Update(_ball);
+        _paddles.ForEach(x => x.Update(_ball));
 
         _jingleService.Play();
 
@@ -86,9 +86,9 @@ public sealed class AutoPongGame : Microsoft.Xna.Framework.Game
         _drawingService.Clear()
                        .Begin()
                        .Draw.CenterLine()
-                       .Draw.Paddles(_paddleLeft, _paddleRight)
+                       .Draw.Paddles(_paddles)
                        .Draw.Ball(_ball)
-                       .Draw.ScorePoints(_paddleLeft, _paddleRight)
+                       .Draw.ScorePoints(_paddles)
                        .End();
 
         base.Draw(gameTime);
@@ -110,8 +110,7 @@ public sealed class AutoPongGame : Microsoft.Xna.Framework.Game
     private void InitializeEntities()
     {
         _ball.Initialize();
-        _paddleLeft.Initialize();
-        _paddleRight.Initialize();
+        _paddles.ForEach(x => x.Initialize());
     }
 
     private void InitializeServices()

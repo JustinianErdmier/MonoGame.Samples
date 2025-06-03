@@ -1,4 +1,7 @@
-﻿using AutoPong.Core.Game.Core;
+﻿using System.Collections.Generic;
+
+using AutoPong.Core.Game.Core;
+using AutoPong.Core.Game.Enums;
 using AutoPong.Core.Game.Services;
 
 using Microsoft.Xna.Framework;
@@ -18,9 +21,7 @@ public sealed class Ball
 
     private static readonly Rectangle InitialBall = new((int)InitialPosition.X, (int)InitialPosition.Y, width: 10, height: 10);
 
-    private readonly Paddle _paddleLeft;
-
-    private readonly Paddle _paddleRight;
+    private readonly List<Paddle> _paddles;
 
     private readonly SoundService _soundService;
 
@@ -32,10 +33,9 @@ public sealed class Ball
 
     private byte _hitCounter;
 
-    public Ball(Paddle paddleLeft, Paddle paddleRight, SoundService soundService)
+    public Ball(List<Paddle> paddles, SoundService soundService)
     {
-        _paddleLeft   = paddleLeft;
-        _paddleRight  = paddleRight;
+        _paddles      = paddles;
         _soundService = soundService;
     }
 
@@ -88,64 +88,89 @@ public sealed class Ball
         // Check for collision with the paddles.
         _hitCounter++;
 
-        if (_hitCounter > 10
-            && _paddleLeft.IsIntersectingWithBall(this))
+        foreach (Paddle paddle in _paddles)
         {
-            _ballVelocity.X *= -1;
-            _ballVelocity.Y *= 1.1f;
-            _hitCounter     =  0;
-            _ballPosition.X =  _paddleLeft.X + _paddleLeft.Width + 10;
+            // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
+            switch (paddle.Location)
+            {
+                case PaddleLocations.Left:
+                    UpdateWithLeftPaddle(paddle);
 
-            _soundService.PlayBallHittingAPaddleSound();
+                    break;
+
+                case PaddleLocations.Right:
+                    UpdateWithRightPaddle(paddle);
+
+                    break;
+            }
         }
 
-        if (_hitCounter > 10
-            && _paddleRight.IsIntersectingWithBall(this))
-        {
-            _ballVelocity.X *= -1;
-            _ballVelocity.Y *= 1.1f;
-            _hitCounter     =  0;
-            _ballPosition.X =  _paddleRight.X - 10;
-
-            _soundService.PlayBallHittingAPaddleSound();
-        }
-
-        // Bounce off the screen.
-        // TODO: Does this need to be an `else if`? Will both conditions ever be true at the same time?
-        if (_ballPosition.X < 0)
-        {
-            // Point to the right.
-            _ballPosition.X =  1;
-            _ballVelocity.X *= -1;
-
-            _paddleRight.IncrementScore();
-
-            _soundService.PlayBallHittingTheLeftOrRightWallSound();
-        }
-        else if (_ballPosition.X > GameOptions.WindowResolution.X)
-        {
-            // Point to the left.
-            _ballPosition.X =  GameOptions.WindowResolution.X - 1;
-            _ballVelocity.X *= -1;
-
-            _paddleLeft.IncrementScore();
-
-            _soundService.PlayBallHittingTheLeftOrRightWallSound();
-        }
-
-        // Bounce off the top and bottom.
-        // TODO: Does this need to be an `else if`? Will both conditions ever be true at the same time?
+        // Limit to the minimum Y position.
+        // TODO: Why are we doing `0 + 10` and not just `10`?
         if (_ballPosition.Y < 0 + 10)
         {
-            // Limit to the minimum Y position.
+            // TODO: Why are we doing `10 + 1` and not just `11`?
             _ballPosition.Y =  10 + 1;
             _ballVelocity.Y *= -(1 + AutoPongGame.Rand.Next(minValue: -100, maxValue: 101) * 0.005f);
         }
+
+        // Limit to the maximum Y position.
         else if (_ballPosition.Y > GameOptions.WindowResolution.Y - 10)
         {
-            // Limit to the maximum Y position.
             _ballPosition.Y =  GameOptions.WindowResolution.Y - 11;
             _ballVelocity.Y *= -(1 + AutoPongGame.Rand.Next(minValue: -100, maxValue: 101) * 0.005f);
         }
+    }
+
+    private void UpdateWithLeftPaddle(Paddle paddle)
+    {
+        if (_hitCounter > 10
+            && paddle.IsIntersectingWithBall(this))
+        {
+            _ballVelocity.X *= -1;
+            _ballVelocity.Y *= 1.1f;
+            _hitCounter     =  0;
+            _ballPosition.X =  paddle.X + paddle.Width + 10;
+
+            _soundService.PlayBallHittingAPaddleSound();
+        }
+
+        if (!(_ballPosition.X > GameOptions.WindowResolution.X))
+        {
+            return;
+        }
+
+        _ballPosition.X =  GameOptions.WindowResolution.X - 1;
+        _ballVelocity.X *= -1;
+
+        paddle.IncrementScore();
+
+        _soundService.PlayBallHittingTheLeftOrRightWallSound();
+    }
+
+    private void UpdateWithRightPaddle(Paddle paddle)
+    {
+        if (_hitCounter > 10
+            && paddle.IsIntersectingWithBall(this))
+        {
+            _ballVelocity.X *= -1;
+            _ballVelocity.Y *= 1.1f;
+            _hitCounter     =  0;
+            _ballPosition.X =  paddle.X - 10;
+
+            _soundService.PlayBallHittingAPaddleSound();
+        }
+
+        if (!(_ballPosition.X < 0))
+        {
+            return;
+        }
+
+        _ballPosition.X =  1;
+        _ballVelocity.X *= -1;
+
+        paddle.IncrementScore();
+
+        _soundService.PlayBallHittingTheLeftOrRightWallSound();
     }
 }
