@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 
 using AutoPong.Core.Game.Core;
 using AutoPong.Core.Game.Enums;
@@ -13,6 +14,8 @@ public sealed class Ball
     private const float MaxVelocity = 1.5f;
 
     private const float Speed = 15.0f;
+
+    private const float SlowSpeed = 1.0f;
 
     // ReSharper disable once PossibleLossOfFraction
     private static readonly Vector2 InitialPosition = new(GameOptions.WindowResolution.X / 2, y: 200);
@@ -82,13 +85,16 @@ public sealed class Ball
             var _          => _velocity.Y
         };
 
+        float speed = CalculateSpeed();
+
         // Apply the velocity to the position.
-        _position.X += _velocity.X * Speed;
-        _position.Y += _velocity.Y * Speed;
+        _position.X += _velocity.X * speed;
+        _position.Y += _velocity.Y * speed;
 
         // Check for collision with the paddles.
         _hitCounter++;
 
+        // TODO: Check if the ball is behind the paddles. If so, don't check for collisions with the paddle.
         foreach (Paddle paddle in _paddles)
         {
             // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
@@ -107,6 +113,37 @@ public sealed class Ball
         }
 
         LimitBall();
+    }
+
+    private float CalculateSpeed()
+    {
+        if (!GameOptions.SlowBallWhenNearPaddles)
+        {
+            return Speed;
+        }
+
+        bool isNearAPaddle = false;
+
+        foreach (Paddle paddle in _paddles.TakeWhile(_ => !isNearAPaddle))
+        {
+            switch (paddle.Location)
+            {
+                case PaddleLocations.Left
+                    when _position.X < paddle.X + paddle.Width + 50:
+                case PaddleLocations.Right
+                    when _position.X > paddle.X - 50:
+                    isNearAPaddle = true;
+
+                    break;
+
+                default:
+                    isNearAPaddle = false;
+
+                    break;
+            }
+        }
+
+        return isNearAPaddle ? SlowSpeed : Speed;
     }
 
     private void LimitBall()

@@ -8,6 +8,8 @@ public static class GameOptions
 
     public const int MaxPointsPerGame = 4;
 
+    public const bool SlowBallWhenNearPaddles = false;
+
     public static readonly Point WindowResolution = new(x: 1280, y: 720);
 
     public static class Colors
