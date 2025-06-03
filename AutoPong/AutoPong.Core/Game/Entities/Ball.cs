@@ -31,6 +31,7 @@ public sealed class Ball
 
     private Vector2 _ballVelocity = InitialVelocity;
 
+    // TODO: What is this for?
     private byte _hitCounter;
 
     public Ball(List<Paddle> paddles, SoundService soundService)
@@ -105,17 +106,23 @@ public sealed class Ball
             }
         }
 
+        LimitBall();
+    }
+
+    private void LimitBall()
+    {
         // Limit to the minimum Y position.
-        // TODO: Why are we doing `0 + 10` and not just `10`?
-        if (_ballPosition.Y < 0 + 10)
+        // TODO: Where does the number 10 come from?
+        if (_ballPosition.Y < 10)
         {
-            // TODO: Why are we doing `10 + 1` and not just `11`?
-            _ballPosition.Y =  10 + 1;
+            _ballPosition.Y =  11;
             _ballVelocity.Y *= -(1 + AutoPongGame.Rand.Next(minValue: -100, maxValue: 101) * 0.005f);
+
+            return;
         }
 
         // Limit to the maximum Y position.
-        else if (_ballPosition.Y > GameOptions.WindowResolution.Y - 10)
+        if (_ballPosition.Y > GameOptions.WindowResolution.Y - 10)
         {
             _ballPosition.Y =  GameOptions.WindowResolution.Y - 11;
             _ballVelocity.Y *= -(1 + AutoPongGame.Rand.Next(minValue: -100, maxValue: 101) * 0.005f);

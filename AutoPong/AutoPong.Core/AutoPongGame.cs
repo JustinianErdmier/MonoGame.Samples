@@ -42,13 +42,15 @@ public sealed class AutoPongGame : Microsoft.Xna.Framework.Game
 
         _paddles = new List<Paddle>
         {
-            new(this, PaddleLocations.Left),
-            new(this, PaddleLocations.Right)
+            new(PaddleLocations.Left),
+            new(PaddleLocations.Right)
         };
 
         _ball = new Ball(_paddles, soundService);
 
         IsMouseVisible = GameOptions.IsMouseVisible;
+
+        _paddles.ForEach(x => x.WonGame += HandlePaddleWinning);
     }
 
     protected override void Initialize()
@@ -93,6 +95,8 @@ public sealed class AutoPongGame : Microsoft.Xna.Framework.Game
 
         base.Draw(gameTime);
     }
+
+    private void HandlePaddleWinning(object? sender, EventArgs eventArgs) => Reinitialize();
 
     /// <summary>Creates the <see cref="_texture" /> with which to draw if it does not exist.</summary>
     private void InitializeTexture()

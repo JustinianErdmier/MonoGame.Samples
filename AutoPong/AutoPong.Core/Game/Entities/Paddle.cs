@@ -16,13 +16,10 @@ public sealed class Paddle
 
     private static readonly Rectangle InitialRightPaddle = new(GameOptions.WindowResolution.X - 30, y: 150, width: 20, PaddleHeight);
 
-    private readonly AutoPongGame _game;
-
     private Rectangle _paddle;
 
-    public Paddle(AutoPongGame game, PaddleLocations location)
+    public Paddle(PaddleLocations location)
     {
-        _game    = game;
         Location = location;
 
         InitializePaddleRectangle();
@@ -46,6 +43,8 @@ public sealed class Paddle
 
     public Rectangle PaddleRectangle => _paddle;
 
+    public event EventHandler? WonGame;
+
     public void IncrementScore() => Score++;
 
     public void Initialize()
@@ -63,7 +62,7 @@ public sealed class Paddle
 
         if (IsWinner())
         {
-            _game.Reinitialize();
+            WonGame?.Invoke(this, EventArgs.Empty);
         }
     }
 
